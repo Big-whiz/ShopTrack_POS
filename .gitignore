@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.nox/
+.tox/
+.venv
+venv/
+ENV/
+
+# Node / React / Vite
+node_modules/
+dist/
+dist-ssr/
+*.local
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+
+# Environment / Secrets (CRITICAL)
+.env
+.env.*
+!.env.example
+docker-compose.override.yml
+
+# DB Storage
+*.sqlite3
+pgdata/
+postgres_data/
+tailscale_data/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project Temporary
+implementation_for_offline_dbplan.md
