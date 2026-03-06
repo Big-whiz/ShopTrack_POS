@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.api.v1 import auth, users, categories, products, sales, analytics, credits
+from app.api.v1 import auth, users, categories, products, sales, analytics, credits, settings as shop_settings_router
 
 app = FastAPI(
     title="ShopTrack POS API",
@@ -31,6 +31,7 @@ app.include_router(products.router, prefix=f"{PREFIX}/products", tags=["Products
 app.include_router(sales.router, prefix=f"{PREFIX}/sales", tags=["Sales"])
 app.include_router(analytics.router, prefix=f"{PREFIX}/analytics", tags=["Analytics"])
 app.include_router(credits.router, prefix=f"{PREFIX}/credits", tags=["Credits"])
+app.include_router(shop_settings_router.router, prefix=f"{PREFIX}/settings", tags=["Settings"])
 
 
 @app.get("/api/health")

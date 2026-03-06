@@ -75,12 +75,14 @@ docker-compose exec backend python app/seed.py
 
 - 🛒 **POS Interface** — Fast product search, cart management, checkout with payment method selection (Cash/MoMo/Split).
 - 📶 **Offline Resilience (PWA)** — App continues to function globally during network outages, quietly queuing offline sales in IndexedDB and syncing when reconnected.
-- 💳 **Credit Sales** — Dedicated tracking module for unpaid store credits with status badges.
+- ⚙️ **Settings Dashboard** — Admins can dynamically change the Store Name, Currency Symbol ($, ₦, GH₵, etc.), and Global Tax Rates without code changes.
+- 🧾 **Thermal Receipt Printing** — High-fidelity 80mm thermal receipt generation with auto-print capability after every sale.
+- 📊 **Data Export (CSV)** — One-click export for Sales History and Analytics Reports to Excel-compatible CSV files.
+- 💳 **Credit Sales** — Dedicated tracking module for unpaid store credits with status badges and itemized breakdowns.
 - 🌓 **Dynamic Theming** — Built-in Light and Dark Mode toggle stored in Zustand.
 - 📦 **Inventory Management** — Add, edit, archive products with SKU, category, cost/selling price, and stock tracking.
-- 📊 **Analytics** — Revenue trend, profit analysis, top products, payment method breakdown.
+- 📊 **Analytics Dashboard** — Revenue trends, profit analysis, top products, and payment method breakdowns.
 - 🔔 **Low Stock Alerts** — Visual badges and dashboard alerts for products below reorder level.
-- 🧾 **Sales History** — Date-filtered transaction log with itemized receipt view.
 - 🔐 **Role-Based Auth** — Admin vs Staff access levels, JWT-secured API.
 - 🐳 **Fully Dockerized** — One command to run the entire backend/frontend stack via Nginx.
 
@@ -127,10 +129,10 @@ docker-compose exec -T db psql -U shoptrack_user shoptrack_db < backup_20250302.
 shoptrack-pos/
 ├── backend/
 │   ├── app/
-│   │   ├── api/v1/   (auth, products, categories, sales, analytics, users)
+│   │   ├── api/v1/   (auth, products, categories, sales, analytics, credits, settings, users)
 │   │   ├── core/     (config, security/JWT)
 │   │   ├── db/       (session, base_class)
-│   │   ├── models/   (user, category, product, sale)
+│   │   ├── models/   (user, category, product, sale, credit, shop_settings)
 │   │   ├── schemas/  (pydantic validation)
 │   │   ├── main.py
 │   │   └── seed.py
@@ -138,10 +140,10 @@ shoptrack-pos/
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/    (Dashboard, Inventory, POS, Sales, Analytics, etc.)
-│   │   ├── components/ (Sidebar, Topbar)
+│   │   ├── pages/    (Dashboard, Inventory, POS, Sales, Analytics, Credits, Settings, etc.)
+│   │   ├── components/ (Sidebar, Topbar, ReceiptPrinter)
+│   │   ├── store/    (auth, settings, theme stores)
 │   │   ├── services/ (Axios API client)
-│   │   ├── store/    (Zustand auth store)
 │   │   └── types/    (TypeScript interfaces)
 │   └── Dockerfile
 ├── nginx/

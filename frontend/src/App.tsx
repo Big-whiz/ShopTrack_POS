@@ -14,6 +14,9 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import CategoriesPage from './pages/CategoriesPage';
 import UsersPage from './pages/UsersPage';
 import CreditPage from './pages/CreditPage';
+import SettingsPage from './pages/SettingsPage';
+import { useSettingsStore } from './store/settingsStore';
+import { useEffect } from 'react';
 
 initTheme();
 
@@ -21,6 +24,13 @@ function ProtectedLayout() {
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
     const [sidebarOpen, setSidebarOpen] = useState(false);
     useSessionTimeout();
+
+    // Fetch global settings when the user enters the protected layout
+    const fetchSettings = useSettingsStore((s) => s.fetchSettings);
+    useEffect(() => {
+        if (isAuthenticated) fetchSettings();
+    }, [isAuthenticated, fetchSettings]);
+
     if (!isAuthenticated) return <Navigate to="/login" replace />;
 
     return (
@@ -73,6 +83,7 @@ export default function App() {
                     <Route element={<AdminRoute />}>
                         <Route path="analytics" element={<AnalyticsPage />} />
                         <Route path="users" element={<UsersPage />} />
+                        <Route path="settings" element={<SettingsPage />} />
                     </Route>
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />

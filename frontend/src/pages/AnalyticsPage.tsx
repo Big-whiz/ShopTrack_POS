@@ -3,9 +3,12 @@ import {
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
+import { Download } from 'lucide-react';
+import Papa from 'papaparse';
 import Topbar from '../components/Topbar';
 import api from '../services/api';
 import { RevenueTrend, TopProduct, ProfitMonthly } from '../types';
+import { useSettingsStore } from '../store/settingsStore';
 import toast from 'react-hot-toast';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
@@ -17,6 +20,9 @@ export default function AnalyticsPage() {
     const [payMethods, setPayMethods] = useState<{ method: string; count: number; total: number }[]>([]);
     const [trendDays, setTrendDays] = useState(30);
     const [loading, setLoading] = useState(true);
+
+    const { settings } = useSettingsStore();
+    const currency = settings?.currency_symbol || 'GH₵';
 
     useEffect(() => {
         setLoading(true);
@@ -36,7 +42,32 @@ export default function AnalyticsPage() {
             .finally(() => setLoading(false));
     }, [trendDays]);
 
-    const fmt = (n: number) => `GH₵ ${n.toLocaleString('en-GH', { minimumFractionDigits: 2 })}`;
+    const handleExportCSV = () => {
+        if (!profit.length) {
+            toast.error('No analytics data to export');
+            return;
+        }
+
+        const csvData = profit.map(p => ({
+            'Month': p.month,
+            'Total Revenue': Number(p.revenue).toFixed(2),
+            'Total Cost': Number(p.cost).toFixed(2),
+            'Net Profit': Number(p.profit).toFixed(2)
+        }));
+
+        const csvString = Papa.unparse(csvData);
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `ShopTrack_Profit_Report_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Profit Report exported to CSV');
+    };
+
+    const fmt = (n: number) => `${currency} ${n.toLocaleString('en-GH', { minimumFractionDigits: 2 })}`;
 
     if (loading) return (
         <>
@@ -51,12 +82,17 @@ export default function AnalyticsPage() {
                 title="Analytics & Reports"
                 subtitle="Business performance insights"
                 actions={
-                    <select value={trendDays} onChange={(e) => setTrendDays(Number(e.target.value))} style={{ width: 'auto' }}>
-                        <option value={7}>Last 7 days</option>
-                        <option value={14}>Last 14 days</option>
-                        <option value={30}>Last 30 days</option>
-                        <option value={90}>Last 90 days</option>
-                    </select>
+                    <div className="flex gap-2">
+                        <select value={trendDays} onChange={(e) => setTrendDays(Number(e.target.value))} style={{ width: 'auto' }}>
+                            <option value={7}>Last 7 days</option>
+                            <option value={14}>Last 14 days</option>
+                            <option value={30}>Last 30 days</option>
+                            <option value={90}>Last 90 days</option>
+                        </select>
+                        <button className="btn btn-secondary" onClick={handleExportCSV} disabled={profit.length === 0}>
+                            <Download size={16} /> Export Profit CSV
+                        </button>
+                    </div>
                 }
             />
             <div className="page-body">

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Eye, Search } from 'lucide-react';
+import { Eye, Search, Download } from 'lucide-react';
+import Papa from 'papaparse';
 import Topbar from '../components/Topbar';
 import api from '../services/api';
 import { SaleListItem, Sale } from '../types';
+import { useSettingsStore } from '../store/settingsStore';
 import toast from 'react-hot-toast';
 
 export default function SalesPage() {
@@ -11,6 +13,9 @@ export default function SalesPage() {
     const [endDate, setEndDate] = useState('');
     const [viewing, setViewing] = useState<Sale | null>(null);
     const [loading, setLoading] = useState(false);
+
+    const { settings } = useSettingsStore();
+    const currency = settings?.currency_symbol || 'GH₵';
 
     const fetchSales = () => {
         setLoading(true);
@@ -41,9 +46,43 @@ export default function SalesPage() {
 
     const totalRevenue = sales.reduce((s, x) => s + Number(x.total_amount), 0);
 
+    const handleExportCSV = () => {
+        if (!sales.length) {
+            toast.error('No data to export');
+            return;
+        }
+
+        const csvData = sales.map(s => ({
+            'Receipt No': s.id,
+            'Date': new Date(s.sale_date).toLocaleString(),
+            'Cashier': s.cashier,
+            'Payment Method': s.payment_method,
+            'Total Amount': Number(s.total_amount).toFixed(2)
+        }));
+
+        const csvString = Papa.unparse(csvData);
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `ShopTrack_Sales_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Sales exported to CSV');
+    };
+
     return (
         <>
-            <Topbar title="Sales History" subtitle={`${sales.length} transactions · GH₵ ${totalRevenue.toFixed(2)} total`} />
+            <Topbar
+                title="Sales History"
+                subtitle={`${sales.length} transactions · ${currency} ${totalRevenue.toFixed(2)} total`}
+                actions={
+                    <button className="btn btn-secondary" onClick={handleExportCSV} disabled={sales.length === 0}>
+                        <Download size={16} /> Export CSV
+                    </button>
+                }
+            />
             <div className="page-body">
                 {/* Filters */}
                 <div className="card mb-4">
@@ -131,8 +170,8 @@ export default function SalesPage() {
                                         <tr key={item.id}>
                                             <td>{item.product_name}</td>
                                             <td>{item.quantity}</td>
-                                            <td>GH₵ {Number(item.unit_price).toFixed(2)}</td>
-                                            <td style={{ fontWeight: 600 }}>GH₵ {Number(item.subtotal).toFixed(2)}</td>
+                                            <td>{currency} {Number(item.unit_price).toFixed(2)}</td>
+                                            <td style={{ fontWeight: 600 }}>{currency} {Number(item.subtotal).toFixed(2)}</td>
                                         </tr>
                                     ))}
                                 </tbody>

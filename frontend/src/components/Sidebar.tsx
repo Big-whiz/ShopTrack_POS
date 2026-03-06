@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Package, ShoppingCart, History,
-    BarChart2, Users, LogOut, ShoppingBag, Tag, CreditCard, X,
+    BarChart2, Users, LogOut, ShoppingBag, Tag, CreditCard, X, Settings
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
@@ -27,6 +27,7 @@ const adminItems = [
         label: 'ADMIN', items: [
             { to: '/analytics', Icon: BarChart2, label: 'Analytics' },
             { to: '/users', Icon: Users, label: 'Users' },
+            { to: '/settings', Icon: Settings, label: 'Settings' },
         ]
     },
 ];

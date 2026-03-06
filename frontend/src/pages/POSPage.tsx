@@ -4,6 +4,11 @@ import Topbar from '../components/Topbar';
 import api from '../services/api';
 import { queueTransaction } from '../services/syncQueue';
 import { Product, CartItem } from '../types';
+import { useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
+import { ReceiptPrinter, ReceiptProps } from '../components/ReceiptPrinter';
+import { useAuthStore } from '../store/authStore';
+import { useSettingsStore } from '../store/settingsStore';
 import toast from 'react-hot-toast';
 
 type PayMethod = 'Cash' | 'Mobile Money' | 'Split';
@@ -18,6 +23,18 @@ export default function POSPage() {
     const [processing, setProcessing] = useState(false);
     const [successSale, setSuccessSale] = useState<{ id: number; total: number; method: PayMethod; momoRef?: string; cash?: number; momo?: number } | null>(null);
     const [cartCollapsed, setCartCollapsed] = useState(false);
+
+    const { user } = useAuthStore();
+    const { settings } = useSettingsStore();
+    const receiptRef = useRef<HTMLDivElement>(null);
+    const [receiptData, setReceiptData] = useState<ReceiptProps | null>(null);
+
+    const currency = settings?.currency_symbol || 'GH₵';
+
+    const handlePrint = useReactToPrint({
+        contentRef: receiptRef, // v3+ uses contentRef
+        documentTitle: 'Receipt',
+    });
 
     useEffect(() => {
         if (window.innerWidth <= 768) setCartCollapsed(true);
@@ -79,12 +96,37 @@ export default function POSPage() {
                 payload.momo_amount = momoAmtNum;
             }
             const { data } = await api.post('/sales', payload);
+
+            // Setup receipt data before clearing cart
+            const currentReceiptData: ReceiptProps = {
+                saleId: data.id,
+                date: new Date(),
+                items: cart.map(c => ({
+                    id: c.product.id,
+                    name: c.product.name,
+                    quantity: c.quantity,
+                    unitPrice: Number(c.product.selling_price),
+                    subtotal: Number(c.product.selling_price) * c.quantity
+                })),
+                total: total,
+                paymentMethod: payMethod,
+                storeName: settings?.store_name || 'ShopTrack POS',
+                currencySymbol: currency,
+                cashierName: user?.full_name || user?.username,
+                footerMsg: settings?.receipt_footer_msg,
+            };
+            setReceiptData(currentReceiptData);
+
             setSuccessSale({ id: data.id, total: Number(data.total_amount), method: payMethod, momoRef: momoRef || undefined, cash: payMethod === 'Split' ? cashAmtNum : undefined, momo: payMethod === 'Split' ? momoAmtNum : undefined });
             setCart([]);
             setMomoRef('');
             setCashAmt('');
             setPayMethod('Cash');
             api.get<Product[]>('/products').then((r) => setProducts(r.data.filter((p) => p.current_stock > 0)));
+
+            // Wait for React to re-render the hidden receipt DOM, then print
+            setTimeout(() => { if (handlePrint) handlePrint(); }, 100);
+
         } catch (err: any) {
             if (!err.response || err.message === 'Network Error') {
                 const payload: Record<string, any> = {
@@ -100,11 +142,35 @@ export default function POSPage() {
 
                 await queueTransaction('sale', payload);
                 toast.success('Offline mode: Sale saved locally and will sync when online ✨', { duration: 4000 });
-                setSuccessSale({ id: Date.now(), total: total, method: payMethod, momoRef: momoRef || undefined, cash: payMethod === 'Split' ? cashAmtNum : undefined, momo: payMethod === 'Split' ? momoAmtNum : undefined });
+
+                const offlineSaleId = Date.now();
+                // Setup receipt data for offline sale
+                const currentReceiptData: ReceiptProps = {
+                    saleId: offlineSaleId,
+                    date: new Date(),
+                    items: cart.map(c => ({
+                        id: c.product.id,
+                        name: c.product.name,
+                        quantity: c.quantity,
+                        unitPrice: Number(c.product.selling_price),
+                        subtotal: Number(c.product.selling_price) * c.quantity
+                    })),
+                    total: total,
+                    paymentMethod: payMethod,
+                    storeName: settings?.store_name || 'ShopTrack POS',
+                    currencySymbol: currency,
+                    cashierName: user?.full_name || user?.username,
+                    footerMsg: settings?.receipt_footer_msg,
+                };
+                setReceiptData(currentReceiptData);
+
+                setSuccessSale({ id: offlineSaleId, total: total, method: payMethod, momoRef: momoRef || undefined, cash: payMethod === 'Split' ? cashAmtNum : undefined, momo: payMethod === 'Split' ? momoAmtNum : undefined });
                 setCart([]);
                 setMomoRef('');
                 setCashAmt('');
                 setPayMethod('Cash');
+
+                setTimeout(() => { if (handlePrint) handlePrint(); }, 100);
             } else {
                 toast.error(err.response?.data?.detail || 'Checkout failed');
             }
@@ -144,18 +210,24 @@ export default function POSPage() {
                             <div style={{ fontWeight: 700, color: 'var(--success)' }}>Sale #{successSale.id} recorded successfully!</div>
                             {successSale.method === 'Split' ? (
                                 <div className="text-muted">
-                                    Total: GH₵ {successSale.total.toFixed(2)} · Cash: GH₵ {successSale.cash?.toFixed(2)} + MoMo: GH₵ {successSale.momo?.toFixed(2)}
+                                    Total: {currency} {successSale.total.toFixed(2)} · Cash: {currency} {successSale.cash?.toFixed(2)} + MoMo: {currency} {successSale.momo?.toFixed(2)}
                                     {successSale.momoRef && <> · Ref: <strong>{successSale.momoRef}</strong></>}
                                 </div>
                             ) : successSale.method === 'Mobile Money' ? (
-                                <div className="text-muted">Total: GH₵ {successSale.total.toFixed(2)} · Mobile Money · Ref: <strong>{successSale.momoRef}</strong></div>
+                                <div className="text-muted">Total: {currency} {successSale.total.toFixed(2)} · Mobile Money · Ref: <strong>{successSale.momoRef}</strong></div>
                             ) : (
-                                <div className="text-muted">Total: GH₵ {successSale.total.toFixed(2)} · Cash</div>
+                                <div className="text-muted">Total: {currency} {successSale.total.toFixed(2)} · Cash</div>
                             )}
                         </div>
-                        <button className="btn btn-soft btn-sm" onClick={() => setSuccessSale(null)}>Dismiss</button>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn btn-primary btn-sm" onClick={() => handlePrint && handlePrint()}>Print Receipt</button>
+                            <button className="btn btn-soft btn-sm" onClick={() => setSuccessSale(null)}>Dismiss</button>
+                        </div>
                     </div>
                 )}
+
+                {/* Hidden Receipt Element for Printing */}
+                {receiptData && <ReceiptPrinter ref={receiptRef} {...receiptData} />}
 
                 <div className="pos-layout">
                     {/* Product Grid */}
@@ -177,7 +249,7 @@ export default function POSPage() {
                                         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 4 }}>{p.category?.name || 'Uncategorized'}</div>
                                         <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 6 }}>{p.name}</div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontWeight: 700, color: 'var(--accent)' }}>GH₵ {Number(p.selling_price).toFixed(2)}</span>
+                                            <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{currency} {Number(p.selling_price).toFixed(2)}</span>
                                             <span className={`badge ${p.current_stock <= p.reorder_level ? 'badge-warning' : 'badge-muted'}`}>{p.current_stock} left</span>
                                         </div>
                                     </button>
@@ -203,7 +275,7 @@ export default function POSPage() {
                                 <div key={product.id} className="cart-item">
                                     <div style={{ flex: 1 }}>
                                         <div className="cart-item-name">{product.name}</div>
-                                        <div className="cart-item-price">GH₵ {Number(product.selling_price).toFixed(2)} each</div>
+                                        <div className="cart-item-price">{currency} {Number(product.selling_price).toFixed(2)} each</div>
                                     </div>
                                     <div className="cart-qty">
                                         <button onClick={() => updateQty(product.id, -1)}><Minus size={12} /></button>
@@ -211,7 +283,7 @@ export default function POSPage() {
                                         <button onClick={() => updateQty(product.id, 1)}><Plus size={12} /></button>
                                     </div>
                                     <div style={{ fontWeight: 700, minWidth: 70, textAlign: 'right', fontSize: '0.85rem' }}>
-                                        GH₵ {(Number(product.selling_price) * quantity).toFixed(2)}
+                                        {currency} {(Number(product.selling_price) * quantity).toFixed(2)}
                                     </div>
                                     <button className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => removeFromCart(product.id)}><Trash2 size={12} /></button>
                                 </div>
@@ -221,7 +293,7 @@ export default function POSPage() {
                             <div className="cart-total">
                                 <div>
                                     <div className="cart-total-label">Total Amount</div>
-                                    <div className="cart-total-value">GH₵ {total.toFixed(2)}</div>
+                                    <div className="cart-total-value">{currency} {total.toFixed(2)}</div>
                                 </div>
                             </div>
 
@@ -253,7 +325,7 @@ export default function POSPage() {
                                 <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
                                     <div className="grid-2" style={{ gap: 8 }}>
                                         <div className="form-group" style={{ marginBottom: 0 }}>
-                                            <label style={{ fontSize: '0.75rem' }}>Cash (GH₵)</label>
+                                            <label style={{ fontSize: '0.75rem' }}>Cash ({currency})</label>
                                             <input
                                                 type="number"
                                                 min="0"
@@ -265,7 +337,7 @@ export default function POSPage() {
                                             />
                                         </div>
                                         <div className="form-group" style={{ marginBottom: 0 }}>
-                                            <label style={{ fontSize: '0.75rem' }}>MoMo (GH₵)</label>
+                                            <label style={{ fontSize: '0.75rem' }}>MoMo ({currency})</label>
                                             <input
                                                 type="number"
                                                 readOnly
@@ -279,7 +351,7 @@ export default function POSPage() {
                                         <div style={{ marginTop: 6, fontSize: '0.75rem', color: Math.abs(cashAmtNum + momoAmtNum - total) < 0.01 ? 'var(--success)' : 'var(--danger)' }}>
                                             {Math.abs(cashAmtNum + momoAmtNum - total) < 0.01
                                                 ? '✓ Amounts match total'
-                                                : `⚠ GH₵ ${(cashAmtNum + momoAmtNum).toFixed(2)} ≠ GH₵ ${total.toFixed(2)}`}
+                                                : `⚠ ${currency} ${(cashAmtNum + momoAmtNum).toFixed(2)} ≠ ${currency} ${total.toFixed(2)}`}
                                         </div>
                                     )}
                                 </div>
@@ -292,7 +364,7 @@ export default function POSPage() {
                                 disabled={!canCheckout || processing}
                             >
                                 {processing ? <span className="spinner" style={{ width: 16, height: 16, borderTopColor: 'white' }} /> : <CheckCircle size={18} />}
-                                {processing ? 'Processing...' : `Charge GH₵ ${total.toFixed(2)}`}
+                                {processing ? 'Processing...' : `Charge ${currency} ${total.toFixed(2)}`}
                             </button>
                         </div>
                     </div>

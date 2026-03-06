@@ -5,6 +5,7 @@ import api from '../services/api';
 import { Product, Category } from '../types';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
+import { useSettingsStore } from '../store/settingsStore';
 
 type ModalMode = 'create' | 'edit' | null;
 
@@ -21,6 +22,8 @@ export default function InventoryPage() {
     const [form, setForm] = useState({ ...emptyForm });
     const [saving, setSaving] = useState(false);
     const isAdmin = useAuthStore((s) => s.isAdmin());
+    const { settings } = useSettingsStore();
+    const currency = settings?.currency_symbol || 'GH₵';
 
     const fetchProducts = useCallback(() => {
         const params: Record<string, string> = {};
@@ -120,8 +123,8 @@ export default function InventoryPage() {
                                             {p.description && <div className="text-muted" style={{ fontSize: '0.75rem' }}>{p.description.slice(0, 50)}</div>}
                                         </td>
                                         <td><span className="badge badge-muted">{p.category?.name || '—'}</span></td>
-                                        <td>GH₵ {Number(p.cost_price).toFixed(2)}</td>
-                                        <td style={{ fontWeight: 600 }}>GH₵ {Number(p.selling_price).toFixed(2)}</td>
+                                        <td>{currency} {Number(p.cost_price).toFixed(2)}</td>
+                                        <td style={{ fontWeight: 600 }}>{currency} {Number(p.selling_price).toFixed(2)}</td>
                                         <td>
                                             <span className={`badge ${isLow(p) ? 'badge-danger' : 'badge-success'}`}>
                                                 {isLow(p) && <AlertTriangle size={10} />} {p.current_stock}
@@ -170,8 +173,8 @@ export default function InventoryPage() {
                                 </div>
                                 <div className="form-group"><label>Description</label><textarea rows={2} placeholder="Optional description..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
                                 <div className="grid-2">
-                                    <div className="form-group"><label>Cost Price (GH₵) *</label><input type="number" step="0.01" min="0" value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: e.target.value })} required /></div>
-                                    <div className="form-group"><label>Selling Price (GH₵) *</label><input type="number" step="0.01" min="0" value={form.selling_price} onChange={(e) => setForm({ ...form, selling_price: e.target.value })} required /></div>
+                                    <div className="form-group"><label>Cost Price ({currency}) *</label><input type="number" step="0.01" min="0" value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: e.target.value })} required /></div>
+                                    <div className="form-group"><label>Selling Price ({currency}) *</label><input type="number" step="0.01" min="0" value={form.selling_price} onChange={(e) => setForm({ ...form, selling_price: e.target.value })} required /></div>
                                 </div>
                                 <div className="grid-2">
                                     <div className="form-group"><label>Stock Qty</label><input type="number" min="0" value={form.current_stock} onChange={(e) => setForm({ ...form, current_stock: e.target.value })} /></div>

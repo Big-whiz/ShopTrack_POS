@@ -7,6 +7,11 @@ import Topbar from '../components/Topbar';
 import api from '../services/api';
 import { queueTransaction } from '../services/syncQueue';
 import { Product, CartItem, Credit, CreditSummary } from '../types';
+import { useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
+import { ReceiptPrinter, ReceiptProps } from '../components/ReceiptPrinter';
+import { useAuthStore } from '../store/authStore';
+import { useSettingsStore } from '../store/settingsStore';
 import toast from 'react-hot-toast';
 
 type Tab = 'add' | 'records';
@@ -24,6 +29,18 @@ export default function CreditPage() {
     const [saving, setSaving] = useState(false);
     const [successCredit, setSuccessCredit] = useState<{ id: number; name: string; total: number } | null>(null);
     const [cartCollapsed, setCartCollapsed] = useState(false);
+
+    const { user } = useAuthStore();
+    const { settings } = useSettingsStore();
+    const receiptRef = useRef<HTMLDivElement>(null);
+    const [receiptData, setReceiptData] = useState<ReceiptProps | null>(null);
+
+    const currency = settings?.currency_symbol || 'GH₵';
+
+    const handlePrint = useReactToPrint({
+        contentRef: receiptRef,
+        documentTitle: 'Credit_Receipt',
+    });
 
     useEffect(() => {
         if (window.innerWidth <= 768) setCartCollapsed(true);
@@ -89,7 +106,7 @@ export default function CreditPage() {
         setSaving(true);
         try {
             const itemsDesc = cart
-                .map((c) => `${c.quantity}x ${c.product.name} @ GH₵${Number(c.product.selling_price).toFixed(2)}`)
+                .map((c) => `${c.quantity}x ${c.product.name} @ ${currency}${Number(c.product.selling_price).toFixed(2)}`)
                 .join('\n');
             const payload = {
                 creditor_name: creditorName.trim(),
@@ -99,14 +116,40 @@ export default function CreditPage() {
                 notes: notes.trim() || null,
             };
             const { data } = await api.post('/credits', payload);
+
+            const currentReceiptData: ReceiptProps = {
+                saleId: data.id,
+                date: new Date(),
+                items: cart.map(c => ({
+                    id: c.product.id,
+                    name: c.product.name,
+                    quantity: c.quantity,
+                    unitPrice: Number(c.product.selling_price),
+                    subtotal: Number(c.product.selling_price) * c.quantity
+                })),
+                total: total,
+                paymentMethod: 'Credit',
+                storeName: settings?.store_name || 'ShopTrack POS',
+                currencySymbol: currency,
+                cashierName: user?.full_name || user?.username,
+                isCredit: true,
+                creditorName: creditorName.trim(),
+                dueDate: dueDate ? new Date(dueDate) : undefined,
+                footerMsg: settings?.receipt_footer_msg,
+            };
+            setReceiptData(currentReceiptData);
+
             setSuccessCredit({ id: data.id, name: creditorName.trim(), total });
             setCart([]);
             setCreditorName('');
             setDueDate('');
             setNotes('');
+
+            setTimeout(() => { if (handlePrint) handlePrint(); }, 100);
+
         } catch (err: any) {
             if (!err.response || err.message === 'Network Error') {
-                const itemsDesc = cart.map((c) => `${c.quantity}x ${c.product.name} @ GH₵${Number(c.product.selling_price).toFixed(2)}`).join('\n');
+                const itemsDesc = cart.map((c) => `${c.quantity}x ${c.product.name} @ ${currency}${Number(c.product.selling_price).toFixed(2)}`).join('\n');
                 await queueTransaction('credit', {
                     creditor_name: creditorName.trim(),
                     items_description: itemsDesc,
@@ -115,11 +158,37 @@ export default function CreditPage() {
                     notes: notes.trim() || null,
                 });
                 toast.success('Offline mode: Credit saved locally and will sync when online ✨', { duration: 4000 });
-                setSuccessCredit({ id: Date.now(), name: creditorName.trim(), total });
+
+                const offlineId = Date.now();
+                const currentReceiptData: ReceiptProps = {
+                    saleId: offlineId,
+                    date: new Date(),
+                    items: cart.map(c => ({
+                        id: c.product.id,
+                        name: c.product.name,
+                        quantity: c.quantity,
+                        unitPrice: Number(c.product.selling_price),
+                        subtotal: Number(c.product.selling_price) * c.quantity
+                    })),
+                    total: total,
+                    paymentMethod: 'Credit',
+                    storeName: settings?.store_name || 'ShopTrack POS',
+                    currencySymbol: currency,
+                    cashierName: user?.full_name || user?.username,
+                    isCredit: true,
+                    creditorName: creditorName.trim(),
+                    dueDate: dueDate ? new Date(dueDate) : undefined,
+                    footerMsg: settings?.receipt_footer_msg,
+                };
+                setReceiptData(currentReceiptData);
+
+                setSuccessCredit({ id: offlineId, name: creditorName.trim(), total });
                 setCart([]);
                 setCreditorName('');
                 setDueDate('');
                 setNotes('');
+
+                setTimeout(() => { if (handlePrint) handlePrint(); }, 100);
             } else {
                 toast.error(err.response?.data?.detail || 'Failed to record credit');
             }
@@ -156,7 +225,7 @@ export default function CreditPage() {
         finally { setSaving(false); }
     };
 
-    const fmt = (n: number) => `GH₵ ${Number(n).toFixed(2)}`;
+    const fmt = (n: number) => `${currency} ${Number(n).toFixed(2)}`;
 
     // ── Tab buttons ───────────────────────────────────────────────
     const tabBtn = (t: Tab, label: string) => (
@@ -197,9 +266,14 @@ export default function CreditPage() {
                                     <div style={{ fontWeight: 700, color: 'var(--success)' }}>Credit #{successCredit.id} recorded for {successCredit.name}!</div>
                                     <div className="text-muted">Outstanding: {fmt(successCredit.total)}</div>
                                 </div>
-                                <button className="btn btn-soft btn-sm" onClick={() => setSuccessCredit(null)}>Dismiss</button>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button className="btn btn-primary btn-sm" onClick={() => handlePrint && handlePrint()}>Print Receipt</button>
+                                    <button className="btn btn-soft btn-sm" onClick={() => setSuccessCredit(null)}>Dismiss</button>
+                                </div>
                             </div>
                         )}
+
+                        {receiptData && <ReceiptPrinter ref={receiptRef} {...receiptData} />}
 
                         <div className="pos-layout">
                             {/* Left: Product grid */}
@@ -221,7 +295,7 @@ export default function CreditPage() {
                                                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 4 }}>{p.category?.name || 'Uncategorized'}</div>
                                                 <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 6 }}>{p.name}</div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span style={{ fontWeight: 700, color: 'var(--accent)' }}>GH₵ {Number(p.selling_price).toFixed(2)}</span>
+                                                    <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{currency} {Number(p.selling_price).toFixed(2)}</span>
                                                     <span className={`badge ${p.current_stock <= p.reorder_level ? 'badge-warning' : 'badge-muted'}`}>{p.current_stock} left</span>
                                                 </div>
                                             </button>
@@ -249,7 +323,7 @@ export default function CreditPage() {
                                         <div key={product.id} className="cart-item">
                                             <div style={{ flex: 1 }}>
                                                 <div className="cart-item-name">{product.name}</div>
-                                                <div className="cart-item-price">GH₵ {Number(product.selling_price).toFixed(2)} each</div>
+                                                <div className="cart-item-price">{currency} {Number(product.selling_price).toFixed(2)} each</div>
                                             </div>
                                             <div className="cart-qty">
                                                 <button onClick={() => updateQty(product.id, -1)}><Minus size={12} /></button>
@@ -257,7 +331,7 @@ export default function CreditPage() {
                                                 <button onClick={() => updateQty(product.id, 1)}><Plus size={12} /></button>
                                             </div>
                                             <div style={{ fontWeight: 700, minWidth: 70, textAlign: 'right', fontSize: '0.85rem' }}>
-                                                GH₵ {(Number(product.selling_price) * quantity).toFixed(2)}
+                                                {currency} {(Number(product.selling_price) * quantity).toFixed(2)}
                                             </div>
                                             <button className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => removeItem(product.id)}><Trash2 size={12} /></button>
                                         </div>
@@ -269,7 +343,7 @@ export default function CreditPage() {
                                     <div className="cart-total">
                                         <div>
                                             <div className="cart-total-label">Credit Total</div>
-                                            <div className="cart-total-value">GH₵ {total.toFixed(2)}</div>
+                                            <div className="cart-total-value">{currency} {total.toFixed(2)}</div>
                                         </div>
                                     </div>
 
@@ -293,7 +367,7 @@ export default function CreditPage() {
                                         disabled={saving || cart.length === 0 || !creditorName.trim()}
                                     >
                                         {saving ? <span className="spinner" style={{ width: 16, height: 16, borderTopColor: 'white' }} /> : <CreditCard size={18} />}
-                                        {saving ? 'Recording…' : `Record GH₵ ${total.toFixed(2)} Credit`}
+                                        {saving ? 'Recording…' : `Record ${currency} ${total.toFixed(2)} Credit`}
                                     </button>
                                 </div>
                             </div>
@@ -417,7 +491,7 @@ export default function CreditPage() {
                             <div className="form-group"><label>Creditor Name</label><input value={editForm.creditor_name} onChange={(e) => setEditForm((f) => ({ ...f, creditor_name: e.target.value }))} /></div>
                             <div className="form-group"><label>Items</label><textarea rows={4} value={editForm.items_description} onChange={(e) => setEditForm((f) => ({ ...f, items_description: e.target.value }))} style={{ resize: 'vertical' }} /></div>
                             <div className="grid-2" style={{ gap: 12 }}>
-                                <div className="form-group"><label>Amount (GH₵)</label><input type="number" step="0.01" value={editForm.total_amount} onChange={(e) => setEditForm((f) => ({ ...f, total_amount: e.target.value }))} /></div>
+                                <div className="form-group"><label>Amount ({currency})</label><input type="number" step="0.01" value={editForm.total_amount} onChange={(e) => setEditForm((f) => ({ ...f, total_amount: e.target.value }))} /></div>
                                 <div className="form-group"><label>Due Date</label><input type="date" value={editForm.due_date} onChange={(e) => setEditForm((f) => ({ ...f, due_date: e.target.value }))} /></div>
                             </div>
                             <div className="form-group"><label>Notes</label><input value={editForm.notes} onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} /></div>

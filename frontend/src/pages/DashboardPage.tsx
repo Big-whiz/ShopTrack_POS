@@ -5,6 +5,7 @@ import Topbar from '../components/Topbar';
 import api from '../services/api';
 import { DashboardSummary, RevenueTrend, TopProduct } from '../types';
 import toast from 'react-hot-toast';
+import { useSettingsStore } from '../store/settingsStore';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
@@ -14,6 +15,8 @@ export default function DashboardPage() {
     const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
     const [loading, setLoading] = useState(true);
     const isAdmin = useAuthStore((s) => s.isAdmin());
+    const { settings } = useSettingsStore();
+    const currency = settings?.currency_symbol || 'GH₵';
 
     useEffect(() => {
         // Use allSettled so summary stats load even if admin-only chart endpoints return 403
@@ -29,7 +32,7 @@ export default function DashboardPage() {
         }).finally(() => setLoading(false));
     }, []);
 
-    const fmt = (n: number) => `GH₵ ${n.toLocaleString('en-GH', { minimumFractionDigits: 2 })}`;
+    const fmt = (n: number) => `${currency} ${n.toLocaleString('en-GH', { minimumFractionDigits: 2 })}`;
 
     if (loading) return (
         <>
