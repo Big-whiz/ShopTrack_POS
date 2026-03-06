@@ -26,6 +26,7 @@ VALID_METHODS = {"Cash", "Mobile Money", "Split"}
 class SaleCreate(BaseModel):
     items: List[SaleItemIn]
     payment_method: str = "Cash"
+    tax_amount: Optional[float] = 0.00
     momo_transaction_id: Optional[str] = None   # Required for Mobile Money / Split
     cash_amount: Optional[float] = None          # Required for Split
     momo_amount: Optional[float] = None          # Required for Split
@@ -48,6 +49,7 @@ class SaleOut(BaseModel):
     sale_date: datetime
     user_id: Optional[int] = None
     total_amount: Decimal
+    tax_amount: Decimal
     payment_method: str
     momo_transaction_id: Optional[str] = None
     cash_amount: Optional[Decimal] = None
@@ -61,6 +63,7 @@ class SaleOutList(BaseModel):
     id: int
     sale_date: datetime
     total_amount: Decimal
+    tax_amount: Decimal
     payment_method: str
     momo_transaction_id: Optional[str] = None
     cash_amount: Optional[Decimal] = None

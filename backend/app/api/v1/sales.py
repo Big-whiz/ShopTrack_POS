@@ -43,7 +43,7 @@ def create_sale(payload: SaleCreate, db: Session = Depends(get_db), current_user
         # Deduct stock atomically
         product.current_stock -= item_in.quantity
 
-    total_amount = round(total_amount, 2)
+    total_amount = round(total_amount + (payload.tax_amount or 0.00), 2)
 
     # Validate split amounts sum to total
     if payload.payment_method == "Split":
@@ -57,6 +57,7 @@ def create_sale(payload: SaleCreate, db: Session = Depends(get_db), current_user
     sale = Sale(
         user_id=current_user.id,
         total_amount=total_amount,
+        tax_amount=payload.tax_amount or 0.00,
         payment_method=payload.payment_method,
         momo_transaction_id=payload.momo_transaction_id,
         cash_amount=payload.cash_amount if payload.payment_method == "Split" else None,
@@ -92,6 +93,7 @@ def list_sales(
             "id": s.id,
             "sale_date": s.sale_date,
             "total_amount": float(s.total_amount),
+            "tax_amount": float(s.tax_amount),
             "payment_method": s.payment_method,
             "momo_transaction_id": s.momo_transaction_id,
             "cash_amount": float(s.cash_amount) if s.cash_amount else None,
@@ -128,6 +130,7 @@ def _build_sale_out(sale: Sale) -> SaleOut:
         sale_date=sale.sale_date,
         user_id=sale.user_id,
         total_amount=sale.total_amount,
+        tax_amount=sale.tax_amount,
         payment_method=sale.payment_method,
         momo_transaction_id=sale.momo_transaction_id,
         cash_amount=sale.cash_amount,

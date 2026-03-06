@@ -177,6 +177,18 @@ export default function SalesPage() {
                                 </tbody>
                             </table>
                             <div className="divider" />
+                            {viewing.tax_amount > 0 && (
+                                <>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                                        <span>Subtotal</span>
+                                        <span style={{ color: 'var(--text)' }}>{currency} {Number(viewing.total_amount - viewing.tax_amount).toFixed(2)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                                        <span>Tax</span>
+                                        <span style={{ color: 'var(--text)' }}>{currency} {Number(viewing.tax_amount).toFixed(2)}</span>
+                                    </div>
+                                </>
+                            )}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span style={{ fontWeight: 600 }}>TOTAL</span>
                                 <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--success)' }}>GH₵ {Number(viewing.total_amount).toFixed(2)}</span>

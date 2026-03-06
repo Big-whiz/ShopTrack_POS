@@ -97,7 +97,10 @@ export default function CreditPage() {
         setCart((prev) => prev.map((c) => c.product.id === id ? { ...c, quantity: Math.max(1, c.quantity + delta) } : c).filter((c) => c.quantity > 0));
     const removeItem = (id: number) => setCart((prev) => prev.filter((c) => c.product.id !== id));
 
-    const total = cart.reduce((s, c) => s + Number(c.product.selling_price) * c.quantity, 0);
+    const subtotal = cart.reduce((sum, c) => sum + Number(c.product.selling_price) * c.quantity, 0);
+    const taxRate = parseFloat(settings?.tax_rate_percent as any) || 0;
+    const taxAmount = (subtotal * taxRate) / 100;
+    const total = subtotal + taxAmount;
 
     // ── Record credit ─────────────────────────────────────────────
     const handleRecord = async () => {
@@ -112,6 +115,7 @@ export default function CreditPage() {
                 creditor_name: creditorName.trim(),
                 items_description: itemsDesc,
                 total_amount: parseFloat(total.toFixed(2)),
+                tax_amount: parseFloat(taxAmount.toFixed(2)),
                 due_date: dueDate || null,
                 notes: notes.trim() || null,
             };
@@ -127,6 +131,8 @@ export default function CreditPage() {
                     unitPrice: Number(c.product.selling_price),
                     subtotal: Number(c.product.selling_price) * c.quantity
                 })),
+                subtotal: subtotal,
+                taxAmount: taxAmount,
                 total: total,
                 paymentMethod: 'Credit',
                 storeName: settings?.store_name || 'ShopTrack POS',
@@ -154,6 +160,7 @@ export default function CreditPage() {
                     creditor_name: creditorName.trim(),
                     items_description: itemsDesc,
                     total_amount: parseFloat(total.toFixed(2)),
+                    tax_amount: parseFloat(taxAmount.toFixed(2)),
                     due_date: dueDate || null,
                     notes: notes.trim() || null,
                 });
@@ -170,6 +177,8 @@ export default function CreditPage() {
                         unitPrice: Number(c.product.selling_price),
                         subtotal: Number(c.product.selling_price) * c.quantity
                     })),
+                    subtotal: subtotal,
+                    taxAmount: taxAmount,
                     total: total,
                     paymentMethod: 'Credit',
                     storeName: settings?.store_name || 'ShopTrack POS',
@@ -340,12 +349,25 @@ export default function CreditPage() {
 
                                 {/* Credit details */}
                                 <div className="cart-summary">
+                                    <div className="cart-total" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '8px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                            <span>Subtotal</span>
+                                            <span>{currency} {subtotal.toFixed(2)}</span>
+                                        </div>
+                                        {taxAmount > 0 && (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                                                <span>Tax ({taxRate}%)</span>
+                                                <span>{currency} {taxAmount.toFixed(2)}</span>
+                                            </div>
+                                        )}
+                                    </div>
                                     <div className="cart-total">
                                         <div>
-                                            <div className="cart-total-label">Credit Total</div>
+                                            <div className="cart-total-label">Grand Total</div>
                                             <div className="cart-total-value">{currency} {total.toFixed(2)}</div>
                                         </div>
                                     </div>
+
 
                                     <div className="form-group" style={{ marginBottom: 10 }}>
                                         <label>Creditor Name <span style={{ color: 'var(--danger)' }}>*</span></label>
@@ -477,32 +499,34 @@ export default function CreditPage() {
                         </div>
                     </>
                 )}
-            </div>
+            </div >
 
             {/* Edit modal */}
-            {showEditModal && editCredit && (
-                <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-                    <div className="modal" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2 className="modal-title">Edit Credit Record</h2>
-                            <button className="btn-icon" onClick={() => setShowEditModal(false)}><X size={16} /></button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="form-group"><label>Creditor Name</label><input value={editForm.creditor_name} onChange={(e) => setEditForm((f) => ({ ...f, creditor_name: e.target.value }))} /></div>
-                            <div className="form-group"><label>Items</label><textarea rows={4} value={editForm.items_description} onChange={(e) => setEditForm((f) => ({ ...f, items_description: e.target.value }))} style={{ resize: 'vertical' }} /></div>
-                            <div className="grid-2" style={{ gap: 12 }}>
-                                <div className="form-group"><label>Amount ({currency})</label><input type="number" step="0.01" value={editForm.total_amount} onChange={(e) => setEditForm((f) => ({ ...f, total_amount: e.target.value }))} /></div>
-                                <div className="form-group"><label>Due Date</label><input type="date" value={editForm.due_date} onChange={(e) => setEditForm((f) => ({ ...f, due_date: e.target.value }))} /></div>
+            {
+                showEditModal && editCredit && (
+                    <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+                        <div className="modal" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h2 className="modal-title">Edit Credit Record</h2>
+                                <button className="btn-icon" onClick={() => setShowEditModal(false)}><X size={16} /></button>
                             </div>
-                            <div className="form-group"><label>Notes</label><input value={editForm.notes} onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} /></div>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-soft" onClick={() => setShowEditModal(false)}>Cancel</button>
-                            <button className="btn btn-primary" onClick={saveEdit} disabled={saving}>Save Changes</button>
+                            <div className="modal-body">
+                                <div className="form-group"><label>Creditor Name</label><input value={editForm.creditor_name} onChange={(e) => setEditForm((f) => ({ ...f, creditor_name: e.target.value }))} /></div>
+                                <div className="form-group"><label>Items</label><textarea rows={4} value={editForm.items_description} onChange={(e) => setEditForm((f) => ({ ...f, items_description: e.target.value }))} style={{ resize: 'vertical' }} /></div>
+                                <div className="grid-2" style={{ gap: 12 }}>
+                                    <div className="form-group"><label>Amount ({currency})</label><input type="number" step="0.01" value={editForm.total_amount} onChange={(e) => setEditForm((f) => ({ ...f, total_amount: e.target.value }))} /></div>
+                                    <div className="form-group"><label>Due Date</label><input type="date" value={editForm.due_date} onChange={(e) => setEditForm((f) => ({ ...f, due_date: e.target.value }))} /></div>
+                                </div>
+                                <div className="form-group"><label>Notes</label><input value={editForm.notes} onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} /></div>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-soft" onClick={() => setShowEditModal(false)}>Cancel</button>
+                                <button className="btn btn-primary" onClick={saveEdit} disabled={saving}>Save Changes</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
         </>
     );
 }

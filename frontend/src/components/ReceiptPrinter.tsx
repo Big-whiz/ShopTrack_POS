@@ -12,6 +12,8 @@ export interface ReceiptProps {
     saleId?: number;
     date: Date;
     items: ReceiptItem[];
+    subtotal?: number;
+    taxAmount?: number;
     total: number;
     paymentMethod: string;
     storeName: string;
@@ -30,6 +32,8 @@ export const ReceiptPrinter = forwardRef<HTMLDivElement, ReceiptProps>(
             saleId,
             date,
             items,
+            subtotal,
+            taxAmount,
             total,
             paymentMethod,
             storeName,
@@ -110,6 +114,19 @@ export const ReceiptPrinter = forwardRef<HTMLDivElement, ReceiptProps>(
 
                     {/* Totals & Footer Info */}
                     <div style={{ marginTop: '10px' }}>
+                        {subtotal !== undefined && taxAmount !== undefined && taxAmount > 0 && (
+                            <>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                                    <span>Subtotal:</span>
+                                    <span>{currencySymbol}{subtotal.toFixed(2)}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                                    <span>Tax:</span>
+                                    <span>{currencySymbol}{taxAmount.toFixed(2)}</span>
+                                </div>
+                                <hr style={{ borderTop: '1px dashed black', borderBottom: 'none', margin: '4px 0' }} />
+                            </>
+                        )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px' }}>
                             <span>TOTAL:</span>
                             <span>{currencySymbol}{total.toFixed(2)}</span>

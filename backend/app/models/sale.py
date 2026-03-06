@@ -11,6 +11,7 @@ class Sale(Base):
     sale_date = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     total_amount = Column(Numeric(12, 2), nullable=False)
+    tax_amount = Column(Numeric(12, 2), default=0.00, nullable=False)
     payment_method = Column(String(50), default="Cash")  # Cash | Mobile Money | Split
 
     # Mobile Money fields

@@ -8,6 +8,7 @@ class CreditCreate(BaseModel):
     creditor_name: str
     items_description: str
     total_amount: float
+    tax_amount: float = 0.00
     due_date: Optional[date] = None
     notes: Optional[str] = None
 
@@ -16,6 +17,7 @@ class CreditUpdate(BaseModel):
     creditor_name: Optional[str] = None
     items_description: Optional[str] = None
     total_amount: Optional[float] = None
+    tax_amount: Optional[float] = None
     due_date: Optional[date] = None
     notes: Optional[str] = None
     is_paid: Optional[bool] = None
@@ -27,6 +29,7 @@ class CreditOut(BaseModel):
     creditor_name: str
     items_description: str
     total_amount: Decimal
+    tax_amount: Decimal
     due_date: Optional[date] = None
     is_paid: bool
     paid_date: Optional[date] = None

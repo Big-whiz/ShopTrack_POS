@@ -11,6 +11,7 @@ class Credit(Base):
     creditor_name = Column(String(200), nullable=False, index=True)
     items_description = Column(Text, nullable=False)   # free-text: what they took
     total_amount = Column(Numeric(12, 2), nullable=False)
+    tax_amount = Column(Numeric(12, 2), default=0.00, nullable=False)
     due_date = Column(Date, nullable=True)
     is_paid = Column(Boolean, default=False, nullable=False)
     paid_date = Column(Date, nullable=True)

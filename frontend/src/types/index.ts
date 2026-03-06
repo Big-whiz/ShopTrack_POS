@@ -45,6 +45,7 @@ export interface Sale {
     sale_date: string;
     user_id: number | null;
     total_amount: number;
+    tax_amount: number;
     payment_method: string;
     items: SaleItem[];
 }
@@ -53,6 +54,7 @@ export interface SaleListItem {
     id: number;
     sale_date: string;
     total_amount: number;
+    tax_amount: number;
     payment_method: string;
     item_count: number;
     cashier: string;

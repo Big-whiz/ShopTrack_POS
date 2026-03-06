@@ -66,7 +66,10 @@ export default function POSPage() {
 
     const removeFromCart = (productId: number) => setCart((prev) => prev.filter((c) => c.product.id !== productId));
 
-    const total = cart.reduce((sum, c) => sum + Number(c.product.selling_price) * c.quantity, 0);
+    const subtotal = cart.reduce((sum, c) => sum + Number(c.product.selling_price) * c.quantity, 0);
+    const taxRate = parseFloat(settings?.tax_rate_percent as any) || 0;
+    const taxAmount = (subtotal * taxRate) / 100;
+    const total = subtotal + taxAmount;
     const cashAmtNum = parseFloat(cashAmt) || 0;
     const momoAmtNum = Math.max(0, parseFloat((total - cashAmtNum).toFixed(2)));
 
@@ -88,6 +91,7 @@ export default function POSPage() {
             const payload: Record<string, any> = {
                 items: cart.map((c) => ({ product_id: c.product.id, quantity: c.quantity })),
                 payment_method: payMethod,
+                tax_amount: parseFloat(taxAmount.toFixed(2)),
             };
             if (payMethod === 'Mobile Money') payload.momo_transaction_id = momoRef.trim();
             if (payMethod === 'Split') {
@@ -108,6 +112,8 @@ export default function POSPage() {
                     unitPrice: Number(c.product.selling_price),
                     subtotal: Number(c.product.selling_price) * c.quantity
                 })),
+                subtotal: subtotal,
+                taxAmount: taxAmount,
                 total: total,
                 paymentMethod: payMethod,
                 storeName: settings?.store_name || 'ShopTrack POS',
@@ -132,6 +138,7 @@ export default function POSPage() {
                 const payload: Record<string, any> = {
                     items: cart.map((c) => ({ product_id: c.product.id, quantity: c.quantity })),
                     payment_method: payMethod,
+                    tax_amount: parseFloat(taxAmount.toFixed(2)),
                 };
                 if (payMethod === 'Mobile Money') payload.momo_transaction_id = momoRef.trim();
                 if (payMethod === 'Split') {
@@ -155,6 +162,8 @@ export default function POSPage() {
                         unitPrice: Number(c.product.selling_price),
                         subtotal: Number(c.product.selling_price) * c.quantity
                     })),
+                    subtotal: subtotal,
+                    taxAmount: taxAmount,
                     total: total,
                     paymentMethod: payMethod,
                     storeName: settings?.store_name || 'ShopTrack POS',
@@ -290,9 +299,21 @@ export default function POSPage() {
                             ))}
                         </div>
                         <div className="cart-summary">
+                            <div className="cart-total" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                    <span>Subtotal</span>
+                                    <span>{currency} {subtotal.toFixed(2)}</span>
+                                </div>
+                                {taxAmount > 0 && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                                        <span>Tax ({taxRate}%)</span>
+                                        <span>{currency} {taxAmount.toFixed(2)}</span>
+                                    </div>
+                                )}
+                            </div>
                             <div className="cart-total">
                                 <div>
-                                    <div className="cart-total-label">Total Amount</div>
+                                    <div className="cart-total-label">Grand Total</div>
                                     <div className="cart-total-value">{currency} {total.toFixed(2)}</div>
                                 </div>
                             </div>
