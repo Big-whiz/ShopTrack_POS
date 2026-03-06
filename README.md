@@ -75,7 +75,7 @@ docker-compose exec backend python app/seed.py
 
 - 🛒 **POS Interface** — Fast product search, cart management, checkout with payment method selection (Cash/MoMo/Split).
 - 📶 **Offline Resilience (PWA)** — App continues to function globally during network outages, quietly queuing offline sales in IndexedDB and syncing when reconnected.
-- ⚙️ **Settings Dashboard** — Admins can dynamically change the Store Name, Currency Symbol ($, ₦, GH₵, etc.), and Global Tax Rates without code changes.
+- ⚙️ **Settings Dashboard** — Admins can dynamically change the Store Name, Currency Symbol ($, ₦, GH₵, etc.), and Global Tax Rates without code changes. Tax calculations are automatically applied across POS, Credit Sales, and printed receipts.
 - 🧾 **Thermal Receipt Printing** — High-fidelity 80mm thermal receipt generation with auto-print capability after every sale.
 - 📊 **Data Export (CSV)** — One-click export for Sales History and Analytics Reports to Excel-compatible CSV files.
 - 💳 **Credit Sales** — Dedicated tracking module for unpaid store credits with status badges and itemized breakdowns.
