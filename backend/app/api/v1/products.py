@@ -66,6 +66,10 @@ def update_product(
     p = db.query(Product).filter(Product.id == product_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Product not found")
+    # Check for SKU conflicts if SKU is being changed
+    if hasattr(payload, 'sku') and payload.sku and payload.sku != p.sku:
+        if db.query(Product).filter(Product.sku == payload.sku, Product.id != product_id).first():
+            raise HTTPException(status_code=400, detail="SKU already in use by another product")
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(p, k, v)
     db.commit()

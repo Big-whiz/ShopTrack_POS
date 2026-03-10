@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
     Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle,
     CreditCard, Clock, AlertTriangle, Edit2, X,
@@ -69,7 +69,7 @@ export default function CreditPage() {
     }, [search]);
 
     // Load credits + summary
-    const fetchRecords = async () => {
+    const fetchRecords = useCallback(async () => {
         setLoading(true);
         try {
             const params: Record<string, any> = {};
@@ -84,9 +84,9 @@ export default function CreditPage() {
             setSummary(sumRes.data);
         } catch { toast.error('Failed to load records'); }
         finally { setLoading(false); }
-    };
+    }, [filter, recSearch]);
 
-    useEffect(() => { if (tab === 'records') fetchRecords(); }, [tab, filter, recSearch]);
+    useEffect(() => { if (tab === 'records') fetchRecords(); }, [tab, fetchRecords]);
 
     // ── Cart helpers ──────────────────────────────────────────────
     const addToCart = (product: Product) => {

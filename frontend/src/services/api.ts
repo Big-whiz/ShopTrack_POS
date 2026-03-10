@@ -20,7 +20,7 @@ api.interceptors.response.use(
     (err) => {
         if (err.response?.status === 401) {
             localStorage.removeItem('access_token');
-            localStorage.removeItem('user');
+            localStorage.removeItem('auth_store'); // Clear persisted Zustand auth state
             window.location.href = '/login';
         }
         return Promise.reject(err);

@@ -199,9 +199,9 @@ export default function SupplierDebtsPage() {
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr><td colSpan={11} style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ margin: '0 auto' }} /></td></tr>
+                                    <tr><td colSpan={12} style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ margin: '0 auto' }} /></td></tr>
                                 ) : filteredDebts.length === 0 ? (
-                                    <tr><td colSpan={11} style={{ textAlign: 'center', padding: 40 }} className="text-muted">No debt records found</td></tr>
+                                    <tr><td colSpan={12} style={{ textAlign: 'center', padding: 40 }} className="text-muted">No debt records found</td></tr>
                                 ) : filteredDebts.map((d, i) => (
                                     <tr key={d.id}>
                                         <td className="text-muted">{i + 1}</td>
