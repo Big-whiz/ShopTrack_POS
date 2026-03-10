@@ -4,6 +4,11 @@ from decimal import Decimal
 from datetime import date, datetime
 
 
+class CreditItemIn(BaseModel):
+    product_id: int
+    quantity: int
+
+
 class CreditCreate(BaseModel):
     creditor_name: str
     items_description: str
@@ -11,6 +16,7 @@ class CreditCreate(BaseModel):
     tax_amount: float = 0.00
     due_date: Optional[date] = None
     notes: Optional[str] = None
+    items: Optional[List[CreditItemIn]] = None  # For stock deduction
 
 
 class CreditUpdate(BaseModel):

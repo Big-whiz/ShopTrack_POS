@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 
-const TIMEOUT_MS = 10 * 60 * 1000;   // 10 minutes
-const WARNING_MS = 1 * 60 * 1000;    // warn 1 minute before
+const TIMEOUT_MS = 30 * 60 * 1000;   // 30 minutes
+const WARNING_MS = 5 * 60 * 1000;    // warn 5 minutes before
 
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
 

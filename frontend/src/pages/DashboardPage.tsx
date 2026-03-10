@@ -113,7 +113,7 @@ export default function DashboardPage() {
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
                                         <XAxis dataKey="day" tick={{ fill: '#6e7681', fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
-                                        <YAxis tick={{ fill: '#6e7681', fontSize: 11 }} tickFormatter={(v) => `${v / 1000}k`} />
+                                        <YAxis tick={{ fill: '#6e7681', fontSize: 11 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)} />
                                         <Tooltip
                                             contentStyle={{ background: '#1f2937', border: '1px solid #30363d', borderRadius: 8 }}
                                             labelStyle={{ color: '#e6edf3' }}

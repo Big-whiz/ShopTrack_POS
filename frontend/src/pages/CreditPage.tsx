@@ -122,6 +122,8 @@ export default function CreditPage() {
                 tax_amount: parseFloat(taxAmount.toFixed(2)),
                 due_date: dueDate || null,
                 notes: notes.trim() || null,
+                // Structured items for server-side stock deduction
+                items: creditCart.map((c) => ({ product_id: c.product.id, quantity: c.quantity })),
             };
             const { data } = await api.post('/credits', payload);
 
@@ -167,6 +169,7 @@ export default function CreditPage() {
                     tax_amount: parseFloat(taxAmount.toFixed(2)),
                     due_date: dueDate || null,
                     notes: notes.trim() || null,
+                    items: creditCart.map((c) => ({ product_id: c.product.id, quantity: c.quantity })),
                 });
                 toast.success('Offline mode: Credit saved locally and will sync when online ✨', { duration: 4000 });
 

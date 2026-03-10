@@ -5,6 +5,7 @@ from datetime import date
 
 from app.db.session import get_db
 from app.models.credit import Credit
+from app.models.product import Product
 from app.schemas.credit import CreditCreate, CreditUpdate, CreditOut, CreditSummary
 from app.core.security import get_current_user
 
@@ -41,6 +42,26 @@ def create_credit(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    # Validate and deduct stock if structured items were provided
+    if payload.items:
+        for item_in in payload.items:
+            product = db.query(Product).filter(
+                Product.id == item_in.product_id,
+                Product.is_active == True
+            ).first()
+            if not product:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Product ID {item_in.product_id} not found"
+                )
+            if product.current_stock < item_in.quantity:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Insufficient stock for '{product.name}'. Available: {product.current_stock}"
+                )
+            # Deduct stock atomically
+            product.current_stock -= item_in.quantity
+
     credit = Credit(
         creditor_name=payload.creditor_name.strip(),
         items_description=payload.items_description.strip(),
@@ -54,6 +75,7 @@ def create_credit(
     db.commit()
     db.refresh(credit)
     return _build_credit_out(credit)
+
 
 
 @router.get("/summary", response_model=CreditSummary)
