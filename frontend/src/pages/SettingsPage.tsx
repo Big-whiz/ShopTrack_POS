@@ -13,6 +13,7 @@ export default function SettingsPage() {
         currency_symbol: 'GH₵',
         tax_rate_percent: 0,
         receipt_footer_msg: '',
+        enable_receipt_print: true,
     });
 
     useEffect(() => {
@@ -22,15 +23,17 @@ export default function SettingsPage() {
                 currency_symbol: settings.currency_symbol,
                 tax_rate_percent: Number(settings.tax_rate_percent),
                 receipt_footer_msg: settings.receipt_footer_msg || '',
+                enable_receipt_print: settings.enable_receipt_print ?? true,
             });
         }
     }, [settings]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
+        const { name, value, type } = e.target;
+        const checked = (e.target as HTMLInputElement).checked;
         setFormData(prev => ({
             ...prev,
-            [name]: name === 'tax_rate_percent' ? parseFloat(value) || 0 : value
+            [name]: type === 'checkbox' ? checked : name === 'tax_rate_percent' ? parseFloat(value) || 0 : value
         }));
     };
 
@@ -101,6 +104,18 @@ export default function SettingsPage() {
                         </div>
 
                         <h3 style={{ marginTop: 30, marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>Receipt Configuration</h3>
+
+                        <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                            <input
+                                type="checkbox"
+                                name="enable_receipt_print"
+                                checked={formData.enable_receipt_print}
+                                onChange={handleChange}
+                                id="enable_receipt_print"
+                                style={{ width: 'auto' }}
+                            />
+                            <label htmlFor="enable_receipt_print" style={{ marginBottom: 0 }}>Enable Auto-Printing of Receipts</label>
+                        </div>
 
                         <div className="form-group">
                             <label>Receipt Footer Message</label>

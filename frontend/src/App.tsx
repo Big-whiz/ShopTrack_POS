@@ -15,6 +15,8 @@ import CategoriesPage from './pages/CategoriesPage';
 import UsersPage from './pages/UsersPage';
 import CreditPage from './pages/CreditPage';
 import SettingsPage from './pages/SettingsPage';
+import SuppliersPage from './pages/SuppliersPage';
+import SupplierDebtsPage from './pages/SupplierDebtsPage';
 import { useSettingsStore } from './store/settingsStore';
 import { useEffect } from 'react';
 
@@ -80,6 +82,8 @@ export default function App() {
                     <Route path="inventory" element={<InventoryPage />} />
                     <Route path="categories" element={<CategoriesPage />} />
                     <Route path="credits" element={<CreditPage />} />
+                    <Route path="suppliers" element={<SuppliersPage />} />
+                    <Route path="supplier-debts" element={<SupplierDebtsPage />} />
                     <Route element={<AdminRoute />}>
                         <Route path="analytics" element={<AnalyticsPage />} />
                         <Route path="users" element={<UsersPage />} />

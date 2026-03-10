@@ -79,7 +79,7 @@ export default function SalesPage() {
                 subtitle={`${sales.length} transactions · ${currency} ${totalRevenue.toFixed(2)} total`}
                 actions={
                     <button className="btn btn-secondary" onClick={handleExportCSV} disabled={sales.length === 0}>
-                        <Download size={16} /> Export CSV
+                        <Download size={14} /> Export CSV
                     </button>
                 }
             />

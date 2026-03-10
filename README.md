@@ -79,6 +79,7 @@ docker-compose exec backend python app/seed.py
 - 🧾 **Thermal Receipt Printing** — High-fidelity 80mm thermal receipt generation with auto-print capability after every sale.
 - 📊 **Data Export (CSV)** — One-click export for Sales History and Analytics Reports to Excel-compatible CSV files.
 - 💳 **Credit Sales** — Dedicated tracking module for unpaid store credits with status badges and itemized breakdowns.
+- 🤝 **Supplier Debt Tracker** [NEW v1.1.0] — Track outstanding balances with vendors, manage partial payments, and export debt reports.
 - 🌓 **Dynamic Theming** — Built-in Light and Dark Mode toggle stored in Zustand.
 - 📦 **Inventory Management** — Add, edit, archive products with SKU, category, cost/selling price, and stock tracking.
 - 📊 **Analytics Dashboard** — Revenue trends, profit analysis, top products, and payment method breakdowns.

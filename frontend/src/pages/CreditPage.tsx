@@ -6,12 +6,13 @@ import {
 import Topbar from '../components/Topbar';
 import api from '../services/api';
 import { queueTransaction } from '../services/syncQueue';
-import { Product, CartItem, Credit, CreditSummary } from '../types';
+import { Product, Credit, CreditSummary } from '../types';
 import { useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { ReceiptPrinter, ReceiptProps } from '../components/ReceiptPrinter';
 import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { useCartStore } from '../store/cartStore';
 import toast from 'react-hot-toast';
 
 type Tab = 'add' | 'records';
@@ -22,7 +23,12 @@ export default function CreditPage() {
     // ── Add Credit (POS-style) state ───────────────────────────────
     const [products, setProducts] = useState<Product[]>([]);
     const [search, setSearch] = useState('');
-    const [cart, setCart] = useState<CartItem[]>([]);
+
+    // Credit cart is now managed by useCartStore
+    const {
+        creditCart, addToCreditCart, updateCreditQty, removeFromCreditCart, clearCreditCart
+    } = useCartStore();
+
     const [creditorName, setCreditorName] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [notes, setNotes] = useState('');
@@ -84,31 +90,29 @@ export default function CreditPage() {
 
     // ── Cart helpers ──────────────────────────────────────────────
     const addToCart = (product: Product) => {
-        setCart((prev) => {
-            const existing = prev.find((c) => c.product.id === product.id);
-            if (existing) {
-                if (existing.quantity >= product.current_stock) { toast.error(`Only ${product.current_stock} in stock`); return prev; }
-                return prev.map((c) => c.product.id === product.id ? { ...c, quantity: c.quantity + 1 } : c);
-            }
-            return [...prev, { product, quantity: 1 }];
-        });
+        const existing = creditCart.find((c) => c.product.id === product.id);
+        if (existing && existing.quantity >= product.current_stock) {
+            toast.error(`Only ${product.current_stock} in stock`);
+            return;
+        }
+        addToCreditCart(product);
     };
-    const updateQty = (id: number, delta: number) =>
-        setCart((prev) => prev.map((c) => c.product.id === id ? { ...c, quantity: Math.max(1, c.quantity + delta) } : c).filter((c) => c.quantity > 0));
-    const removeItem = (id: number) => setCart((prev) => prev.filter((c) => c.product.id !== id));
 
-    const subtotal = cart.reduce((sum, c) => sum + Number(c.product.selling_price) * c.quantity, 0);
+    const updateQty = (id: number, delta: number) => updateCreditQty(id, delta);
+    const removeItem = (id: number) => removeFromCreditCart(id);
+
+    const subtotal = creditCart.reduce((sum, c) => sum + Number(c.product.selling_price) * c.quantity, 0);
     const taxRate = parseFloat(settings?.tax_rate_percent as any) || 0;
     const taxAmount = (subtotal * taxRate) / 100;
     const total = subtotal + taxAmount;
 
     // ── Record credit ─────────────────────────────────────────────
     const handleRecord = async () => {
-        if (cart.length === 0) { toast.error('Add at least one item'); return; }
+        if (creditCart.length === 0) { toast.error('Add at least one item'); return; }
         if (!creditorName.trim()) { toast.error('Enter creditor name'); return; }
         setSaving(true);
         try {
-            const itemsDesc = cart
+            const itemsDesc = creditCart
                 .map((c) => `${c.quantity}x ${c.product.name} @ ${currency}${Number(c.product.selling_price).toFixed(2)}`)
                 .join('\n');
             const payload = {
@@ -124,7 +128,7 @@ export default function CreditPage() {
             const currentReceiptData: ReceiptProps = {
                 saleId: data.id,
                 date: new Date(),
-                items: cart.map(c => ({
+                items: creditCart.map(c => ({
                     id: c.product.id,
                     name: c.product.name,
                     quantity: c.quantity,
@@ -146,16 +150,16 @@ export default function CreditPage() {
             setReceiptData(currentReceiptData);
 
             setSuccessCredit({ id: data.id, name: creditorName.trim(), total });
-            setCart([]);
+            clearCreditCart();
             setCreditorName('');
             setDueDate('');
             setNotes('');
 
-            setTimeout(() => { if (handlePrint) handlePrint(); }, 100);
+            setTimeout(() => { if (handlePrint && settings?.enable_receipt_print !== false) handlePrint(); }, 100);
 
         } catch (err: any) {
             if (!err.response || err.message === 'Network Error') {
-                const itemsDesc = cart.map((c) => `${c.quantity}x ${c.product.name} @ ${currency}${Number(c.product.selling_price).toFixed(2)}`).join('\n');
+                const itemsDesc = creditCart.map((c) => `${c.quantity}x ${c.product.name} @ ${currency}${Number(c.product.selling_price).toFixed(2)}`).join('\n');
                 await queueTransaction('credit', {
                     creditor_name: creditorName.trim(),
                     items_description: itemsDesc,
@@ -170,7 +174,7 @@ export default function CreditPage() {
                 const currentReceiptData: ReceiptProps = {
                     saleId: offlineId,
                     date: new Date(),
-                    items: cart.map(c => ({
+                    items: creditCart.map(c => ({
                         id: c.product.id,
                         name: c.product.name,
                         quantity: c.quantity,
@@ -192,12 +196,12 @@ export default function CreditPage() {
                 setReceiptData(currentReceiptData);
 
                 setSuccessCredit({ id: offlineId, name: creditorName.trim(), total });
-                setCart([]);
+                clearCreditCart();
                 setCreditorName('');
                 setDueDate('');
                 setNotes('');
 
-                setTimeout(() => { if (handlePrint) handlePrint(); }, 100);
+                setTimeout(() => { if (handlePrint && settings?.enable_receipt_print !== false) handlePrint(); }, 100);
             } else {
                 toast.error(err.response?.data?.detail || 'Failed to record credit');
             }
@@ -293,13 +297,13 @@ export default function CreditPage() {
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
                                     {products.map((p) => {
-                                        const inCart = cart.find((c) => c.product.id === p.id);
+                                        const isItemInCart = creditCart.find((c) => c.product.id === p.id);
                                         return (
                                             <button
                                                 key={p.id}
                                                 onClick={() => addToCart(p)}
                                                 className="card"
-                                                style={{ textAlign: 'left', cursor: 'pointer', border: inCart ? '1px solid var(--accent)' : '1px solid var(--border)', background: inCart ? 'var(--accent-glow)' : 'var(--bg-card)', transition: 'all 0.15s' }}
+                                                style={{ textAlign: 'left', cursor: 'pointer', border: isItemInCart ? '1px solid var(--accent)' : '1px solid var(--border)', background: isItemInCart ? 'var(--accent-glow)' : 'var(--bg-card)', transition: 'all 0.15s' }}
                                             >
                                                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 4 }}>{p.category?.name || 'Uncategorized'}</div>
                                                 <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 6 }}>{p.name}</div>
@@ -320,15 +324,15 @@ export default function CreditPage() {
                             <div className={`pos-cart ${cartCollapsed ? 'cart-collapsed' : ''}`}>
                                 <div className="cart-toggle-bar" onClick={() => setCartCollapsed(!cartCollapsed)}>
                                     <div style={{ fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <CreditCard size={16} /> Credit · {cart.length} item{cart.length !== 1 ? 's' : ''}
+                                        <CreditCard size={16} /> Credit · {creditCart.length} item{creditCart.length !== 1 ? 's' : ''}
                                     </div>
                                 </div>
 
                                 {/* Cart items */}
                                 <div className="cart-items">
-                                    {cart.length === 0 ? (
+                                    {creditCart.length === 0 ? (
                                         <div className="full-center" style={{ minHeight: 100 }}><ShoppingCart size={24} /><span>No items selected</span></div>
-                                    ) : cart.map(({ product, quantity }) => (
+                                    ) : creditCart.map(({ product, quantity }) => (
                                         <div key={product.id} className="cart-item">
                                             <div style={{ flex: 1 }}>
                                                 <div className="cart-item-name">{product.name}</div>
@@ -384,9 +388,9 @@ export default function CreditPage() {
 
                                     <button
                                         className="btn btn-primary"
-                                        style={{ width: '100%', justifyContent: 'center', padding: '12px', opacity: (cart.length > 0 && creditorName.trim()) ? 1 : 0.5 }}
+                                        style={{ width: '100%', justifyContent: 'center', padding: '12px', opacity: (creditCart.length > 0 && creditorName.trim()) ? 1 : 0.5 }}
                                         onClick={handleRecord}
-                                        disabled={saving || cart.length === 0 || !creditorName.trim()}
+                                        disabled={saving || creditCart.length === 0 || !creditorName.trim()}
                                     >
                                         {saving ? <span className="spinner" style={{ width: 16, height: 16, borderTopColor: 'white' }} /> : <CreditCard size={18} />}
                                         {saving ? 'Recording…' : `Record ${currency} ${total.toFixed(2)} Credit`}
@@ -467,7 +471,12 @@ export default function CreditPage() {
                                                     {c.notes && <div className="text-muted" style={{ fontSize: '0.72rem' }}>{c.notes}</div>}
                                                 </td>
                                                 <td style={{ maxWidth: 240 }}>
-                                                    <div style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.items_description}</div>
+                                                    <details>
+                                                        <summary style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent)' }}>View Items</summary>
+                                                        <div style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginTop: '8px', padding: '8px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)' }}>
+                                                            {c.items_description}
+                                                        </div>
+                                                    </details>
                                                 </td>
                                                 <td style={{ fontWeight: 700, color: c.is_paid ? 'var(--success)' : c.is_overdue ? 'var(--danger)' : 'var(--text)' }}>
                                                     {fmt(c.total_amount)}

@@ -3,12 +3,13 @@ import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle, Smartphone, Ban
 import Topbar from '../components/Topbar';
 import api from '../services/api';
 import { queueTransaction } from '../services/syncQueue';
-import { Product, CartItem } from '../types';
+import { Product } from '../types';
 import { useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { ReceiptPrinter, ReceiptProps } from '../components/ReceiptPrinter';
 import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { useCartStore } from '../store/cartStore';
 import toast from 'react-hot-toast';
 
 type PayMethod = 'Cash' | 'Mobile Money' | 'Split';
@@ -16,7 +17,11 @@ type PayMethod = 'Cash' | 'Mobile Money' | 'Split';
 export default function POSPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [search, setSearch] = useState('');
-    const [cart, setCart] = useState<CartItem[]>([]);
+    // Cart is now managed by useCartStore
+    const {
+        posCart, addToPosCart, updatePosQty, removeFromPosCart, clearPosCart
+    } = useCartStore();
+
     const [payMethod, setPayMethod] = useState<PayMethod>('Cash');
     const [momoRef, setMomoRef] = useState('');
     const [cashAmt, setCashAmt] = useState('');
@@ -47,26 +52,15 @@ export default function POSPage() {
     }, [search]);
 
     const addToCart = (product: Product) => {
-        setCart((prev) => {
-            const existing = prev.find((c) => c.product.id === product.id);
-            if (existing) {
-                if (existing.quantity >= product.current_stock) { toast.error(`Only ${product.current_stock} available`); return prev; }
-                return prev.map((c) => c.product.id === product.id ? { ...c, quantity: c.quantity + 1 } : c);
-            }
-            return [...prev, { product, quantity: 1 }];
-        });
+        const existing = posCart.find((c) => c.product.id === product.id);
+        if (existing && existing.quantity >= product.current_stock) {
+            toast.error(`Only ${product.current_stock} available`);
+            return;
+        }
+        addToPosCart(product);
     };
 
-    const updateQty = (productId: number, delta: number) => {
-        setCart((prev) =>
-            prev.map((c) => c.product.id === productId ? { ...c, quantity: Math.max(1, c.quantity + delta) } : c)
-                .filter((c) => c.quantity > 0)
-        );
-    };
-
-    const removeFromCart = (productId: number) => setCart((prev) => prev.filter((c) => c.product.id !== productId));
-
-    const subtotal = cart.reduce((sum, c) => sum + Number(c.product.selling_price) * c.quantity, 0);
+    const subtotal = posCart.reduce((sum, c) => sum + Number(c.product.selling_price) * c.quantity, 0);
     const taxRate = parseFloat(settings?.tax_rate_percent as any) || 0;
     const taxAmount = (subtotal * taxRate) / 100;
     const total = subtotal + taxAmount;
@@ -74,7 +68,7 @@ export default function POSPage() {
     const momoAmtNum = Math.max(0, parseFloat((total - cashAmtNum).toFixed(2)));
 
     const canCheckout = (() => {
-        if (cart.length === 0) return false;
+        if (posCart.length === 0) return false;
         if (payMethod === 'Mobile Money' && !momoRef.trim()) return false;
         if (payMethod === 'Split') {
             if (!momoRef.trim()) return false;
@@ -89,7 +83,7 @@ export default function POSPage() {
         setProcessing(true);
         try {
             const payload: Record<string, any> = {
-                items: cart.map((c) => ({ product_id: c.product.id, quantity: c.quantity })),
+                items: posCart.map((c) => ({ product_id: c.product.id, quantity: c.quantity })),
                 payment_method: payMethod,
                 tax_amount: parseFloat(taxAmount.toFixed(2)),
             };
@@ -105,7 +99,7 @@ export default function POSPage() {
             const currentReceiptData: ReceiptProps = {
                 saleId: data.id,
                 date: new Date(),
-                items: cart.map(c => ({
+                items: posCart.map(c => ({
                     id: c.product.id,
                     name: c.product.name,
                     quantity: c.quantity,
@@ -124,19 +118,19 @@ export default function POSPage() {
             setReceiptData(currentReceiptData);
 
             setSuccessSale({ id: data.id, total: Number(data.total_amount), method: payMethod, momoRef: momoRef || undefined, cash: payMethod === 'Split' ? cashAmtNum : undefined, momo: payMethod === 'Split' ? momoAmtNum : undefined });
-            setCart([]);
+            clearPosCart();
             setMomoRef('');
             setCashAmt('');
             setPayMethod('Cash');
             api.get<Product[]>('/products').then((r) => setProducts(r.data.filter((p) => p.current_stock > 0)));
 
             // Wait for React to re-render the hidden receipt DOM, then print
-            setTimeout(() => { if (handlePrint) handlePrint(); }, 100);
+            setTimeout(() => { if (handlePrint && settings?.enable_receipt_print !== false) handlePrint(); }, 100);
 
         } catch (err: any) {
             if (!err.response || err.message === 'Network Error') {
                 const payload: Record<string, any> = {
-                    items: cart.map((c) => ({ product_id: c.product.id, quantity: c.quantity })),
+                    items: posCart.map((c) => ({ product_id: c.product.id, quantity: c.quantity })),
                     payment_method: payMethod,
                     tax_amount: parseFloat(taxAmount.toFixed(2)),
                 };
@@ -155,7 +149,7 @@ export default function POSPage() {
                 const currentReceiptData: ReceiptProps = {
                     saleId: offlineSaleId,
                     date: new Date(),
-                    items: cart.map(c => ({
+                    items: posCart.map(c => ({
                         id: c.product.id,
                         name: c.product.name,
                         quantity: c.quantity,
@@ -174,12 +168,12 @@ export default function POSPage() {
                 setReceiptData(currentReceiptData);
 
                 setSuccessSale({ id: offlineSaleId, total: total, method: payMethod, momoRef: momoRef || undefined, cash: payMethod === 'Split' ? cashAmtNum : undefined, momo: payMethod === 'Split' ? momoAmtNum : undefined });
-                setCart([]);
+                clearPosCart();
                 setMomoRef('');
                 setCashAmt('');
                 setPayMethod('Cash');
 
-                setTimeout(() => { if (handlePrint) handlePrint(); }, 100);
+                setTimeout(() => { if (handlePrint && settings?.enable_receipt_print !== false) handlePrint(); }, 100);
             } else {
                 toast.error(err.response?.data?.detail || 'Checkout failed');
             }
@@ -247,13 +241,13 @@ export default function POSPage() {
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
                             {products.map((p) => {
-                                const inCart = cart.find((c) => c.product.id === p.id);
+                                const isItemInCart = posCart.find((c) => c.product.id === p.id);
                                 return (
                                     <button
                                         key={p.id}
                                         onClick={() => addToCart(p)}
                                         className="card"
-                                        style={{ textAlign: 'left', cursor: 'pointer', border: inCart ? '1px solid var(--accent)' : '1px solid var(--border)', background: inCart ? 'var(--accent-glow)' : 'var(--bg-card)', transition: 'all 0.15s' }}
+                                        style={{ textAlign: 'left', cursor: 'pointer', border: isItemInCart ? '1px solid var(--accent)' : '1px solid var(--border)', background: isItemInCart ? 'var(--accent-glow)' : 'var(--bg-card)', transition: 'all 0.15s' }}
                                     >
                                         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 4 }}>{p.category?.name || 'Uncategorized'}</div>
                                         <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 6 }}>{p.name}</div>
@@ -274,27 +268,27 @@ export default function POSPage() {
                     <div className={`pos-cart ${cartCollapsed ? 'cart-collapsed' : ''}`}>
                         <div className="cart-toggle-bar" onClick={() => setCartCollapsed(!cartCollapsed)}>
                             <div style={{ fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <ShoppingCart size={16} /> Cart · {cart.length} item{cart.length !== 1 ? 's' : ''}
+                                <ShoppingCart size={16} /> Cart · {posCart.length} item{posCart.length !== 1 ? 's' : ''}
                             </div>
                         </div>
                         <div className="cart-items">
-                            {cart.length === 0 ? (
+                            {posCart.length === 0 ? (
                                 <div className="full-center" style={{ minHeight: 120 }}><ShoppingCart size={24} /><span>Cart is empty</span></div>
-                            ) : cart.map(({ product, quantity }) => (
+                            ) : posCart.map(({ product, quantity }) => (
                                 <div key={product.id} className="cart-item">
                                     <div style={{ flex: 1 }}>
                                         <div className="cart-item-name">{product.name}</div>
                                         <div className="cart-item-price">{currency} {Number(product.selling_price).toFixed(2)} each</div>
                                     </div>
                                     <div className="cart-qty">
-                                        <button onClick={() => updateQty(product.id, -1)}><Minus size={12} /></button>
+                                        <button onClick={() => updatePosQty(product.id, -1)}><Minus size={12} /></button>
                                         <span style={{ fontWeight: 700, minWidth: 24, textAlign: 'center' }}>{quantity}</span>
-                                        <button onClick={() => updateQty(product.id, 1)}><Plus size={12} /></button>
+                                        <button onClick={() => updatePosQty(product.id, 1)}><Plus size={12} /></button>
                                     </div>
                                     <div style={{ fontWeight: 700, minWidth: 70, textAlign: 'right', fontSize: '0.85rem' }}>
                                         {currency} {(Number(product.selling_price) * quantity).toFixed(2)}
                                     </div>
-                                    <button className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => removeFromCart(product.id)}><Trash2 size={12} /></button>
+                                    <button className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => removeFromPosCart(product.id)}><Trash2 size={12} /></button>
                                 </div>
                             ))}
                         </div>

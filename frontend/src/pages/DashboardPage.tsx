@@ -28,7 +28,14 @@ export default function DashboardPage() {
             if (s.status === 'fulfilled') setSummary(s.value.data);
             else toast.error('Failed to load dashboard summary');
             if (t.status === 'fulfilled') setTrend(t.value.data);
-            if (tp.status === 'fulfilled') setTopProducts(tp.value.data);
+            if (tp.status === 'fulfilled') {
+                // Truncate names to prevent overlap on chart
+                const formatted = tp.value.data.map(p => ({
+                    ...p,
+                    name: p.name.length > 20 ? p.name.substring(0, 18) + '...' : p.name
+                }));
+                setTopProducts(formatted);
+            }
         }).finally(() => setLoading(false));
     }, []);
 
@@ -125,7 +132,7 @@ export default function DashboardPage() {
                                     <BarChart data={topProducts} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#21262d" horizontal={false} />
                                         <XAxis type="number" tick={{ fill: '#6e7681', fontSize: 11 }} />
-                                        <YAxis dataKey="name" type="category" tick={{ fill: '#8b949e', fontSize: 11 }} width={110} />
+                                        <YAxis dataKey="name" type="category" tick={{ fill: '#8b949e', fontSize: 10 }} width={130} />
                                         <Tooltip
                                             contentStyle={{ background: '#1f2937', border: '1px solid #30363d', borderRadius: 8 }}
                                             formatter={(v: number) => [v, 'Units Sold']}

@@ -19,6 +19,12 @@ const navItems = [
             { to: '/inventory', Icon: Package, label: 'Products' },
             { to: '/categories', Icon: Tag, label: 'Categories' },
         ]
+    },
+    {
+        label: 'SUPPLIERS', items: [
+            { to: '/suppliers', Icon: Users, label: 'Suppliers' },
+            { to: '/supplier-debts', Icon: CreditCard, label: 'Supplier Debts' },
+        ]
     }
 ];
 
@@ -53,7 +59,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     return (
         <aside className={`sidebar${isOpen ? ' mobile-open' : ''}`}>
-            <div className="sidebar-logo">
+            <div className="sidebar-logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
                 <div className="sidebar-logo-icon"><ShoppingBag size={20} color="white" /></div>
                 <div>
                     <div className="sidebar-logo-text">ShopTrack</div>

@@ -90,7 +90,7 @@ export default function AnalyticsPage() {
                             <option value={90}>Last 90 days</option>
                         </select>
                         <button className="btn btn-secondary" onClick={handleExportCSV} disabled={profit.length === 0}>
-                            <Download size={16} /> Export Profit CSV
+                            <Download size={14} /> Export Profit CSV
                         </button>
                     </div>
                 }

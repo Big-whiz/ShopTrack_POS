@@ -7,6 +7,7 @@ export interface ShopSettings {
     currency_symbol: string;
     tax_rate_percent: string | number; // Decimal comes as string or number
     receipt_footer_msg: string;
+    enable_receipt_print: boolean;
 }
 
 interface SettingsState {

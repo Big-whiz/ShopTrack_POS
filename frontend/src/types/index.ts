@@ -114,3 +114,26 @@ export interface CreditSummary {
     count_overdue: number;
     count_paid: number;
 }
+export interface Supplier {
+    id: number;
+    name: string;
+    contact_person: string | null;
+    phone: string | null;
+    email: string | null;
+}
+
+export interface SupplierDebt {
+    id: number;
+    supplier_id: number;
+    supplier: Supplier;
+    amount_owed: number;
+    amount_paid: number;
+    status: 'Unpaid' | 'Paid' | 'Partial';
+    date_incurred: string;
+    payment_date: string | null;
+    payment_method: string | null;
+    notes: string | null;
+    responsible_staff_id: number | null;
+    responsible_staff?: { full_name: string | null; username: string };
+    created_at: string;
+}

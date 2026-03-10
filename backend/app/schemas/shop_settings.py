@@ -6,6 +6,7 @@ class ShopSettingsBase(BaseModel):
     currency_symbol: str
     tax_rate_percent: Decimal
     receipt_footer_msg: str | None = None
+    enable_receipt_print: bool = True
 
 class ShopSettingsCreate(ShopSettingsBase):
     pass
